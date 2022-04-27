@@ -1,0 +1,14 @@
+spring:
+  profiles:
+    active:
+      - test
+
+bot:
+  persist-path: /tmp/hellobot
+  token: N/A
+  admins:
+    - none
+
+logging:
+  level:
+    com.mindcode.hellobot: debug

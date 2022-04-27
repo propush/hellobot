@@ -1,0 +1,10 @@
+bot:
+  persist-path: ${PERSIST_PATH:/tmp/hellobot}
+  token: ${BOT_TOKEN}
+#  admins:
+#    - admin1
+#    - admin2
+
+logging:
+  level:
+    com.mindcode.hellobot: ${LOG_LEVEL:debug}
