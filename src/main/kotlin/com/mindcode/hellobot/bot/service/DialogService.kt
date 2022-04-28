@@ -15,7 +15,7 @@ class DialogService {
             .toLong(10)
 
     fun extractNameFromOriginalText(originalText: String): String =
-        originalText.substringAfter(']').substringBeforeLast(':').trim()
+        originalText.substringAfter(']').substringBefore(':').trim()
 
     fun composeToName(message: Message): String {
         val originalText = message.replyToMessage?.text ?: return ""

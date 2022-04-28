@@ -23,6 +23,14 @@ internal class DialogServiceTest {
             290705193L,
             dialogService.extractIdFromOriginalText("New message from [290705193] pushkin_kukushkin : 1")
         )
+        assertEquals(
+            290705193L,
+            dialogService.extractIdFromOriginalText("New message from [290705193] Sergey Poziturin (@pushkin_kukushkin) : 1:1")
+        )
+        assertEquals(
+            290705193L,
+            dialogService.extractIdFromOriginalText("New message from [290705193] pushkin_kukushkin : 1:1")
+        )
     }
 
     @Test
@@ -34,6 +42,14 @@ internal class DialogServiceTest {
         assertEquals(
             "pushkin_kukushkin",
             dialogService.extractNameFromOriginalText("New message from [290705193] pushkin_kukushkin : 1")
+        )
+        assertEquals(
+            "Sergey Poziturin (@pushkin_kukushkin)",
+            dialogService.extractNameFromOriginalText("New message from [290705193] Sergey Poziturin (@pushkin_kukushkin) : 1:1")
+        )
+        assertEquals(
+            "pushkin_kukushkin",
+            dialogService.extractNameFromOriginalText("New message from [290705193] pushkin_kukushkin : 1:1")
         )
     }
 }
