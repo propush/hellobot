@@ -34,7 +34,7 @@ class BotRepository(
             objectMapper
                 .readValue<MutableMap<String, Long>>(usersFile)
                 .also {
-                    log.info("Users loaded from file")
+                    log.info("Users loaded from file: $it")
                 }
         } catch (e: Exception) {
             mutableMapOf<String, Long>()
