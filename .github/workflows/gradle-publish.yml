@@ -8,8 +8,13 @@
 name: Gradle Package
 
 on:
-  release:
-    types: [created]
+  push:
+    branches: [ 'main' ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PROJECT_NAME: ${{ github.repository }}
 
 jobs:
   build:
@@ -20,26 +25,107 @@ jobs:
       packages: write
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 11
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-        server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
-        settings-path: ${{ github.workspace }} # location for the settings.xml file
+      - uses: actions/checkout@v3
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
+          settings-path: ${{ github.workspace }} # location for the settings.xml file
 
-    - name: Build with Gradle
-      uses: gradle/gradle-build-action@0d13054264b0bb894ded474f08ebb30921341cee
-      with:
-        arguments: build bootJar
+      - name: Build with Gradle
+        uses: gradle/gradle-build-action@0d13054264b0bb894ded474f08ebb30921341cee
+        with:
+          arguments: build bootJar
 
-    # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
-    # the publishing section of your build.gradle
-    - name: Publish to GitHub Packages
-      uses: gradle/gradle-build-action@0d13054264b0bb894ded474f08ebb30921341cee
-      with:
-        arguments: publish
-      env:
-        USERNAME: ${{ github.actor }}
-        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get commit info
+        id: commit-info
+        run: |
+          export COMMIT_SHA=`git rev-parse --short HEAD`
+          export BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+          echo "::set-output name=image_tag::${BRANCH_NAME}-${COMMIT_SHA}"
+
+      - name: Determine target deploy host
+        run: |
+          case ${BRANCH_NAME} in
+            main)
+              echo Main environment is active
+              echo "TARGET_HOST=hellobot.mindcode.info" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown deploy target"
+              exit 1
+              ;;
+          esac
+
+      - name: Create SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
+          SSH_KEY_PATH: ${{ github.workspace }}/../private.key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh/
+          sudo chmod 700 ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          sudo chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $TARGET_HOST > ~/.ssh/known_hosts
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy Docker container
+        env:
+          SSH_USER: ${{secrets.SSH_USER}}
+        shell: bash
+        run: |
+          echo Target: $SSH_USER@$TARGET_HOST           
+          echo > .env
+          chmod 600 .env
+          
+          echo "BOT_ADMINS_0=${{secrets.BOT_ADMINS_0}}" >> .env
+          echo "BOT_ADMINS_1=${{secrets.BOT_ADMINS_1}}" >> .env
+          echo "BOT_TOKEN=${{secrets.BOT_TOKEN}}" >> .env
+          echo "PERSIST_PATH=/data" >> .env
+          
+          ssh $SSH_USER@$TARGET_HOST "mkdir -p $PROJECT_NAME/"
+          scp docker-compose.yml $SSH_USER@$TARGET_HOST:$PROJECT_NAME/docker-compose.yml
+          scp .env $SSH_USER@$TARGET_HOST:$PROJECT_NAME/.env
+          ssh $SSH_USER@$TARGET_HOST "cd $PROJECT_NAME/; REGISTRY=${REGISTRY} REPOSITORY=${GITHUB_REPOSITORY} BUILD_TAG=${BRANCH_NAME} docker-compose up -d"
