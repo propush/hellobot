@@ -128,4 +128,5 @@ jobs:
           ssh $SSH_USER@$TARGET_HOST "mkdir -p $PROJECT_NAME/"
           scp docker-compose.yml $SSH_USER@$TARGET_HOST:$PROJECT_NAME/docker-compose.yml
           scp .env $SSH_USER@$TARGET_HOST:$PROJECT_NAME/.env
-          ssh $SSH_USER@$TARGET_HOST "cd $PROJECT_NAME/; REGISTRY=${REGISTRY} REPOSITORY=${GITHUB_REPOSITORY} BUILD_TAG=${BRANCH_NAME} docker-compose up -d"
+          ssh $SSH_USER@$TARGET_HOST "cd $PROJECT_NAME/; REGISTRY=${REGISTRY} REPOSITORY=${GITHUB_REPOSITORY} BUILD_TAG=${BRANCH_NAME} docker-compose pull"
+          ssh $SSH_USER@$TARGET_HOST "cd $PROJECT_NAME/; REGISTRY=${REGISTRY} REPOSITORY=${GITHUB_REPOSITORY} BUILD_TAG=${BRANCH_NAME} docker-compose up -d --force-recreate"
