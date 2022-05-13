@@ -12,6 +12,7 @@ import com.github.kotlintelegrambot.entities.User
 import com.github.kotlintelegrambot.extensions.filters.Filter
 import com.mindcode.hellobot.bot.repository.BotRepository
 import com.mindcode.hellobot.configuration.HelloBotConfiguration
+import com.mindcode.hellobot.localization.exception.LocalizationNotFoundException
 import org.slf4j.LoggerFactory.getLogger
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
@@ -44,7 +45,12 @@ class HelloBotService(
 
                 command("start") {
                     log.debug("Received start command")
-                    tryPersistAdminUser(bot, message.from)
+                    tryPersistAdminUser(message.from)
+                    if (userIsAdmin(message.from)) {
+                        sendAdminWelcomeMessage(bot, message.from)
+                    } else {
+                        sendUserWelcomeMessage(bot, message.from)
+                    }
                 }
 
                 message(Filter.Command.not()) {
@@ -64,6 +70,32 @@ class HelloBotService(
         }.apply {
             startPolling()
             log.info("Bot initialized")
+        }
+    }
+
+    private fun sendUserWelcomeMessage(bot: Bot, user: User?) {
+        log.debug("Sending user welcome message to $user")
+        if (user == null) {
+            log.error("User is null")
+            return
+        }
+        try {
+            sendMessage(bot, user, dialogService.getUserWelcomeMessage(user))
+        } catch (e: LocalizationNotFoundException) {
+            log.error("Localization not found: ${e.message}")
+        }
+    }
+
+    private fun sendAdminWelcomeMessage(bot: Bot, user: User?) {
+        log.debug("Sending admin welcome message to $user")
+        if (user == null) {
+            log.error("User is null")
+            return
+        }
+        try {
+            sendMessage(bot, user, dialogService.getAdminWelcomeMessage(user))
+        } catch (e: LocalizationNotFoundException) {
+            log.error("Localization not found: ${e.message}")
         }
     }
 
@@ -89,7 +121,7 @@ class HelloBotService(
         bot.sendMessage(ChatId.fromId(originalSenderId), text)
     }
 
-    private fun tryPersistAdminUser(bot: Bot, user: User?) {
+    private fun tryPersistAdminUser(user: User?) {
         if (user == null) {
             log.error("User is null")
             return
@@ -99,10 +131,9 @@ class HelloBotService(
             return
         }
         val userName = user.username!!
-        if (helloBotConfiguration.admins.contains(userName)) {
+        if (userIsAdmin(user)) {
             botRepository.saveUser(userName, user.id)
             log.info("Admin user $userName saved as ${user.id}")
-            bot.sendMessage(ChatId.fromId(user.id), "Hello, admin!")
         } else {
             log.info("User $userName is not admin, not saving")
         }
@@ -129,6 +160,11 @@ class HelloBotService(
     private fun sendMessage(bot: Bot, chatId: ChatId, text: String) {
         log.info("Sending message to $chatId: $text")
         bot.sendMessage(chatId = chatId, text = text)
+    }
+
+    private fun sendMessage(bot: Bot, user: User, text: String) {
+        log.info("Sending message to $user: $text")
+        sendMessage(bot, ChatId.fromId(user.id), text)
     }
 
     private fun checkConfiguration() {

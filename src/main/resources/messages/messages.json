@@ -1,0 +1,16 @@
+{
+  "localizedMessages": {
+    "ru": {
+      "messages": {
+        "WELCOME_ADMIN": "Привет, админ!",
+        "WELCOME_USER": "Приветствую вас, уважаемый пользователь бота! Мы - команда Майндкод. Готовы ответить на все вопросы. Просто напишите их сюда и мы выйдем с вами на связь как можно скорее."
+      }
+    },
+    "en": {
+      "messages": {
+        "WELCOME_ADMIN": "Hello, admin!",
+        "WELCOME_USER": "Hello, dear bot user! We are Mindcode team. We are ready to answer all your questions. Just write them here and we will get back to you as soon as possible."
+      }
+    }
+  }
+}

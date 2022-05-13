@@ -2,10 +2,12 @@ package com.mindcode.hellobot.bot.service
 
 import com.github.kotlintelegrambot.entities.Message
 import com.github.kotlintelegrambot.entities.User
+import com.mindcode.hellobot.localization.message.Messages
+import com.mindcode.hellobot.localization.service.LocalizationService
 import org.springframework.stereotype.Service
 
 @Service
-class DialogService {
+class DialogService(private val localizationService: LocalizationService) {
 
     fun extractIdFromOriginalText(originalText: String) =
         originalText
@@ -38,5 +40,17 @@ class DialogService {
         val originalText = message.replyToMessage?.text ?: throw IllegalArgumentException("Message is not a reply")
         return extractIdFromOriginalText(originalText)
     }
+
+    fun getAdminWelcomeMessage(user: User): String {
+        val languageCode = getUserLanguageCode(user)
+        return localizationService.getLocalizedMessage(Messages.WELCOME_ADMIN, languageCode)
+    }
+
+    fun getUserWelcomeMessage(user: User): String {
+        val languageCode = getUserLanguageCode(user)
+        return localizationService.getLocalizedMessage(Messages.WELCOME_USER, languageCode)
+    }
+
+    private fun getUserLanguageCode(user: User) = user.languageCode
 
 }
