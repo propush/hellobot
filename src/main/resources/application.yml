@@ -7,4 +7,4 @@ bot:
 
 logging:
   level:
-    com.mindcode.hellobot: ${LOG_LEVEL:debug}
+    com.mindcode.hellobot: ${LOG_LEVEL:info}
